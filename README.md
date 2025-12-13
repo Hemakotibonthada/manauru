@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Mana Uru (మన ఊరు - Our Village)
 
 A comprehensive cross-platform community application designed specifically for Indian villages, built with React Native (Expo) and Firebase.
@@ -242,3 +243,6 @@ For support, email support@manauru.com or open an issue in the repository.
 ---
 
 Made with ❤️ for Indian Villages
+=======
+# manauru
+>>>>>>> 79feae57feada53d57fce83734fb7a834536e1dd
