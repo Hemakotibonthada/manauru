@@ -1,0 +1,52 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+*.ipa
+*.apk
+
+# Metro
+.metro-health-check*
+
+# Build
+build/
+.gradle/
+.idea/
+*.iml
+*.hprof
+*.jsbundle
+
+# Environment
+.env
+.env.local
+.env.production
+
+# macOS
+.DS_Store
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Testing
+coverage/
+
+# Misc
+*.log
+.vscode/

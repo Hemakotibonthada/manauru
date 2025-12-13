@@ -1,0 +1,80 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Image size validation (max 10MB)
+    function validImageSize() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // Video size validation (max 100MB)
+    function validVideoSize() {
+      return request.resource.size < 100 * 1024 * 1024;
+    }
+    
+    // Image content type validation
+    function validImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Video content type validation
+    function validVideoType() {
+      return request.resource.contentType.matches('video/.*');
+    }
+    
+    // User profile images
+    match /users/{userId}/profile/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(userId) && 
+        validImageSize() && validImageType();
+    }
+    
+    // Village images
+    match /villages/{villageId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && validImageSize() && validImageType();
+    }
+    
+    // Post media
+    match /posts/{postId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && 
+        ((validImageSize() && validImageType()) || 
+         (validVideoSize() && validVideoType()));
+    }
+    
+    // Fundraiser media
+    match /fundraisers/{fundraiserId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && validImageSize() && validImageType();
+    }
+    
+    // Problem media
+    match /problems/{problemId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && validImageSize() && validImageType();
+    }
+    
+    // Chat media
+    match /chats/{chatId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && 
+        ((validImageSize() && validImageType()) || 
+         (validVideoSize() && validVideoType()));
+    }
+    
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
