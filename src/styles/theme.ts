@@ -1,9 +1,10 @@
 /**
  * Theme Configuration
- * Design system tokens and theme configuration
+ * Design system tokens and theme configuration with light/dark mode support
  */
 
-export const colors = {
+// Light theme colors
+export const lightColors = {
   // Primary colors
   primary: {
     main: '#FF6B35',
@@ -46,13 +47,14 @@ export const colors = {
   background: {
     default: '#FFFFFF',
     paper: '#F5F5F5',
-    dark: '#121212',
+    card: '#FFFFFF',
+    elevated: '#FFFFFF',
   },
   text: {
     primary: '#212121',
     secondary: '#757575',
     disabled: '#BDBDBD',
-    light: '#FFFFFF',
+    inverse: '#FFFFFF',
   },
   divider: '#E0E0E0',
   border: '#CCCCCC',
@@ -62,6 +64,71 @@ export const colors = {
   share: '#2196F3',
   comment: '#607D8B',
 };
+
+// Dark theme colors
+export const darkColors = {
+  // Primary colors
+  primary: {
+    main: '#FF6B35',
+    light: '#FF8C61',
+    dark: '#E55A2B',
+    contrast: '#000000',
+  },
+  
+  // Secondary colors
+  secondary: {
+    main: '#4A90E2',
+    light: '#6BA3E8',
+    dark: '#3A7BC8',
+    contrast: '#000000',
+  },
+  
+  // Success, error, warning, info
+  success: {
+    main: '#66BB6A',
+    light: '#81C784',
+    dark: '#4CAF50',
+  },
+  error: {
+    main: '#EF5350',
+    light: '#E57373',
+    dark: '#F44336',
+  },
+  warning: {
+    main: '#FFA726',
+    light: '#FFB74D',
+    dark: '#FF9800',
+  },
+  info: {
+    main: '#42A5F5',
+    light: '#64B5F6',
+    dark: '#2196F3',
+  },
+  
+  // Neutral colors
+  background: {
+    default: '#121212',
+    paper: '#1E1E1E',
+    card: '#2C2C2C',
+    elevated: '#383838',
+  },
+  text: {
+    primary: '#FFFFFF',
+    secondary: '#B0B0B0',
+    disabled: '#707070',
+    inverse: '#000000',
+  },
+  divider: '#3A3A3A',
+  border: '#4A4A4A',
+  
+  // Social media colors
+  like: '#E91E63',
+  share: '#2196F3',
+  comment: '#90A4AE',
+};
+
+// Legacy export for backward compatibility
+export const colors = lightColors;
 
 export const spacing = {
   xs: 4,
@@ -136,24 +203,15 @@ export const typography = {
 
 export const shadows = {
   sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.15)',
     elevation: 4,
   },
   lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
     elevation: 8,
   },
 };
@@ -167,3 +225,8 @@ export const theme = {
 };
 
 export type Theme = typeof theme;
+
+// Helper function to get themed colors
+export function getThemedColors(isDark: boolean) {
+  return isDark ? darkColors : lightColors;
+}

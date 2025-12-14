@@ -36,7 +36,18 @@ export const useAuthInit = () => {
  */
 export const useAuth = () => {
   const { user, loading, error, isAuthenticated } = useAuthStore();
-  return { user, loading, error, isAuthenticated };
+  const setUser = useAuthStore((state) => state.setUser);
+
+  const refreshUser = async () => {
+    if (user) {
+      const userData = await AuthService.getUserData(user.id);
+      if (userData) {
+        setUser(userData);
+      }
+    }
+  };
+
+  return { user, loading, error, isAuthenticated, refreshUser };
 };
 
 /**

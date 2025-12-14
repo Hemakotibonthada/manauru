@@ -66,7 +66,7 @@ export const Input: React.FC<InputProps> = ({
         )}
         
         <TextInput
-          style={[styles.input, leftIcon && { paddingLeft: 0 }]}
+          style={[styles.input, leftIcon && styles.inputWithIcon]}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholderTextColor={colors.text.disabled}
@@ -132,6 +132,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontSize: typography.body1.fontSize,
     color: colors.text.primary,
+  },
+  inputWithIcon: {
+    paddingLeft: 0,
   },
   leftIcon: {
     marginRight: spacing.sm,

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "693249416656",
+    "project_id": "mana-uru-001",
+    "storage_bucket": "mana-uru-001.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:693249416656:android:d3d06a5163abf998bcadd5",
+        "android_client_info": {
+          "package_name": "com.circuvent.manauru"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "693249416656-4ao9m0kf5t7oh88n2pd2ah7bhjnvf4lh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIaVNsQ2VvXDWK2fWQb698lpE9PAfkyMw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "693249416656-4ao9m0kf5t7oh88n2pd2ah7bhjnvf4lh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

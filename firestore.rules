@@ -126,5 +126,73 @@ service cloud.firestore {
       allow delete: if isSignedIn() && 
         (isOwner(resource.data.userId) || isAdmin());
     }
+    
+    // Admin stats collection
+    match /admin_stats/{statId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // Smart devices collection
+    match /smart_devices/{deviceId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Audit logs collection
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // Content reports collection
+    match /content_reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Family trees collection
+    match /family_trees/{treeId} {
+      allow read: if true; // Public trees readable by all
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (isOwner(resource.data.ownerId) || 
+         request.auth.uid in resource.data.collaborators);
+      allow delete: if isSignedIn() && isOwner(resource.data.ownerId);
+    }
+    
+    // Family members collection
+    match /family_members/{memberId} {
+      allow read: if true; // Can be restricted based on tree privacy
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Family relations collection
+    match /family_relations/{relationId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Family events collection
+    match /family_events/{eventId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
   }
 }

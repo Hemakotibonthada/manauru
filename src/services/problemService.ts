@@ -134,6 +134,27 @@ export class ProblemService {
   }
 
   /**
+   * Get all problems
+   */
+  static async getAllProblems(pageSize: number = 50): Promise<Problem[]> {
+    try {
+      const q = query(
+        collection(db, 'problems'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Problem)
+      );
+    } catch (error) {
+      console.error('❌ Error fetching problems:', error);
+      throw new Error('Failed to fetch problems');
+    }
+  }
+
+  /**
    * Get problems by category
    */
   static async getProblemsByCategory(

@@ -55,6 +55,8 @@ export class AuthService {
         language: 'en',
         followers: [],
         following: [],
+        qualifications: [],
+        skills: [],
       };
 
       await setDoc(doc(db, 'users', firebaseUser.uid), userData);

@@ -57,11 +57,9 @@ export class PostService {
         }));
       }
 
-      const postData: Omit<Post, 'id'> = {
+      const postData: any = {
         userId,
         userName,
-        villageId,
-        villageName,
         type,
         content,
         media,
@@ -74,6 +72,10 @@ export class PostService {
         createdAt: serverTimestamp() as any,
         updatedAt: serverTimestamp() as any,
       };
+
+      // Only add optional fields if they have values
+      if (villageId) postData.villageId = villageId;
+      if (villageName) postData.villageName = villageName;
 
       await setDoc(postRef, postData);
       console.log('✅ Post created successfully');
@@ -133,6 +135,58 @@ export class PostService {
     } catch (error) {
       console.error('❌ Error fetching posts:', error);
       throw new Error('Failed to fetch posts');
+    }
+  }
+
+  /**
+   * Get popular posts (sorted by engagement)
+   */
+  static async getPopularPosts(
+    pageSize: number = 20,
+    timeRange: 'day' | 'week' | 'month' | 'all' = 'week'
+  ): Promise<Post[]> {
+    try {
+      let startDate = new Date();
+      
+      switch (timeRange) {
+        case 'day':
+          startDate.setDate(startDate.getDate() - 1);
+          break;
+        case 'week':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+        case 'all':
+          startDate = new Date(0);
+          break;
+      }
+
+      const q = query(
+        collection(db, 'posts'),
+        where('createdAt', '>', Timestamp.fromDate(startDate)),
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      );
+
+      const snapshot = await getDocs(q);
+      const posts = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Post)
+      );
+
+      // Sort by engagement score (likes + comments * 2 + shares * 3)
+      const sortedPosts = posts.sort((a, b) => {
+        const scoreA = (a.likeCount || 0) + (a.commentCount || 0) * 2 + (a.shareCount || 0) * 3;
+        const scoreB = (b.likeCount || 0) + (b.commentCount || 0) * 2 + (b.shareCount || 0) * 3;
+        return scoreB - scoreA;
+      });
+
+      // Return top pageSize posts
+      return sortedPosts.slice(0, pageSize);
+    } catch (error) {
+      console.error('❌ Error fetching popular posts:', error);
+      throw new Error('Failed to fetch popular posts');
     }
   }
 
@@ -257,11 +311,10 @@ export class PostService {
   ): Promise<string> {
     try {
       const commentRef = doc(collection(db, 'posts', postId, 'comments'));
-      const commentData: Omit<Comment, 'id'> = {
+      const commentData: any = {
         postId,
         userId,
         userName,
-        userAvatar,
         content,
         likes: [],
         likeCount: 0,
@@ -270,6 +323,11 @@ export class PostService {
         createdAt: serverTimestamp() as any,
         updatedAt: serverTimestamp() as any,
       };
+
+      // Only add userAvatar if it's defined
+      if (userAvatar) {
+        commentData.userAvatar = userAvatar;
+      }
 
       await setDoc(commentRef, commentData);
 
@@ -347,6 +405,28 @@ export class PostService {
     } catch (error) {
       console.error('❌ Error liking comment:', error);
       throw new Error('Failed to like comment');
+    }
+  }
+
+  /**
+   * Unlike a comment
+   */
+  static async unlikeComment(
+    postId: string,
+    commentId: string,
+    userId: string
+  ): Promise<void> {
+    try {
+      const commentRef = doc(db, 'posts', postId, 'comments', commentId);
+      await updateDoc(commentRef, {
+        likes: arrayRemove(userId),
+        likeCount: increment(-1),
+        updatedAt: serverTimestamp(),
+      });
+      console.log('✅ Comment unliked successfully');
+    } catch (error) {
+      console.error('❌ Error unliking comment:', error);
+      throw new Error('Failed to unlike comment');
     }
   }
 

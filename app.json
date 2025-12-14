@@ -35,10 +35,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "build": {
+        "babel": {
+          "include": ["@expo/vector-icons"]
+        }
+      }
     },
     "plugins": [
-      "expo-router",
       [
         "expo-image-picker",
         {
@@ -60,7 +64,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "mana-uru-001"
+        "projectId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
       }
     }
   }

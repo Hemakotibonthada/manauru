@@ -28,7 +28,7 @@ export const usePosts = (villageId?: string, pageSize: number = 20) => {
       if (refresh) {
         setPosts(newPosts);
       } else {
-        setPosts((prev) => [...prev, ...newPosts]);
+        setPosts((prev: Post[]) => [...prev, ...newPosts]);
       }
 
       setLastDoc(newLastDoc);

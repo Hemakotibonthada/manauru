@@ -138,7 +138,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       {post.tags && post.tags.length > 0 && (
         <View style={styles.tags}>
           {post.tags.map((tag, index) => (
-            <View key={index} style={styles.tag}>
+            <View key={`tag-${index}`} style={styles.tag}>
               <Text style={styles.tagText}>#{tag}</Text>
             </View>
           ))}

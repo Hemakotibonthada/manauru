@@ -31,8 +31,15 @@ service firebase.storage {
       return request.resource.contentType.matches('video/.*');
     }
     
-    // User profile images
+    // User profile images (legacy path)
     match /users/{userId}/profile/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(userId) && 
+        validImageSize() && validImageType();
+    }
+    
+    // User profile images (new path)
+    match /profiles/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if isSignedIn() && isOwner(userId) && 
         validImageSize() && validImageType();

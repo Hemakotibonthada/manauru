@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  View,
 } from 'react-native';
 import { colors, spacing, borderRadius, typography } from '../styles/theme';
 
@@ -67,10 +68,10 @@ export const Button: React.FC<ButtonProps> = ({
           color={variant === 'primary' ? colors.primary.contrast : colors.primary.main}
         />
       ) : (
-        <>
-          {icon && icon}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: icon ? spacing.xs : 0 }}>
+          {icon}
           <Text style={textStyles}>{title}</Text>
-        </>
+        </View>
       )}
     </TouchableOpacity>
   );
