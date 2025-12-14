@@ -26,6 +26,9 @@ import { spacing, borderRadius, typography, getThemedColors } from '../styles/th
 import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { FamilyMemberSearch } from '../components/FamilyMemberSearch';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export const ProfileScreen = () => {
   const { user, refreshUser } = useAuth();
@@ -60,6 +63,15 @@ export const ProfileScreen = () => {
   const [showGenderPicker, setShowGenderPicker] = useState(false);
   const [editingSection, setEditingSection] = useState<'basic' | 'professional' | 'personal' | null>(null);
   const [skillInput, setSkillInput] = useState('');
+  
+  // Family relationship state
+  const [showFatherSearch, setShowFatherSearch] = useState(false);
+  const [showMotherSearch, setShowMotherSearch] = useState(false);
+  const [showSpouseSearch, setShowSpouseSearch] = useState(false);
+  const [father, setFather] = useState<User | null>(null);
+  const [mother, setMother] = useState<User | null>(null);
+  const [spouse, setSpouse] = useState<User | null>(null);
+  const [children, setChildren] = useState<User[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -77,8 +89,232 @@ export const ProfileScreen = () => {
       setGender(user.gender);
       setMaritalStatus(user.maritalStatus);
       setBloodGroup(user.bloodGroup);
+      
+      // Load family members
+      loadFamilyMembers();
     }
   }, [user]);
+
+  const loadFamilyMembers = async () => {
+    if (!user) return;
+
+    try {
+      // Load father
+      if (user.fatherId) {
+        const fatherDoc = await getDoc(doc(db, 'users', user.fatherId));
+        if (fatherDoc.exists()) {
+          setFather({ id: fatherDoc.id, ...fatherDoc.data() } as User);
+        }
+      }
+
+      // Load mother
+      if (user.motherId) {
+        const motherDoc = await getDoc(doc(db, 'users', user.motherId));
+        if (motherDoc.exists()) {
+          setMother({ id: motherDoc.id, ...motherDoc.data() } as User);
+        }
+      }
+
+      // Load spouse
+      if (user.spouseId) {
+        const spouseDoc = await getDoc(doc(db, 'users', user.spouseId));
+        if (spouseDoc.exists()) {
+          setSpouse({ id: spouseDoc.id, ...spouseDoc.data() } as User);
+        }
+      }
+
+      // Load children
+      if (user.childrenIds && user.childrenIds.length > 0) {
+        const childrenData: User[] = [];
+        for (const childId of user.childrenIds) {
+          const childDoc = await getDoc(doc(db, 'users', childId));
+          if (childDoc.exists()) {
+            childrenData.push({ id: childDoc.id, ...childDoc.data() } as User);
+          }
+        }
+        setChildren(childrenData);
+      }
+    } catch (error) {
+      console.error('Error loading family members:', error);
+    }
+  };
+
+  const handleLinkFather = async (father: User) => {
+    if (!user) return;
+
+    try {
+      // Update current user's fatherId
+      await updateDoc(doc(db, 'users', user.id), {
+        fatherId: father.id,
+      });
+
+      // Add current user to father's children
+      await updateDoc(doc(db, 'users', father.id), {
+        childrenIds: arrayUnion(user.id),
+      });
+
+      setFather(father);
+      await refreshUser();
+      Alert.alert('Success', 'Father linked successfully!');
+    } catch (error) {
+      console.error('Error linking father:', error);
+      Alert.alert('Error', 'Failed to link father. Please try again.');
+    }
+  };
+
+  const handleLinkMother = async (mother: User) => {
+    if (!user) return;
+
+    try {
+      // Update current user's motherId
+      await updateDoc(doc(db, 'users', user.id), {
+        motherId: mother.id,
+      });
+
+      // Add current user to mother's children
+      await updateDoc(doc(db, 'users', mother.id), {
+        childrenIds: arrayUnion(user.id),
+      });
+
+      setMother(mother);
+      await refreshUser();
+      Alert.alert('Success', 'Mother linked successfully!');
+    } catch (error) {
+      console.error('Error linking mother:', error);
+      Alert.alert('Error', 'Failed to link mother. Please try again.');
+    }
+  };
+
+  const handleLinkSpouse = async (spouse: User) => {
+    if (!user) return;
+
+    try {
+      // Update current user's spouseId
+      await updateDoc(doc(db, 'users', user.id), {
+        spouseId: spouse.id,
+      });
+
+      // Update spouse's spouseId (reciprocal relationship)
+      await updateDoc(doc(db, 'users', spouse.id), {
+        spouseId: user.id,
+      });
+
+      setSpouse(spouse);
+      await refreshUser();
+      Alert.alert('Success', 'Spouse linked successfully!');
+    } catch (error) {
+      console.error('Error linking spouse:', error);
+      Alert.alert('Error', 'Failed to link spouse. Please try again.');
+    }
+  };
+
+  const handleRemoveFather = async () => {
+    if (!user || !father) return;
+
+    Alert.alert(
+      'Remove Father',
+      'Are you sure you want to remove this relationship?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remove fatherId from current user
+              await updateDoc(doc(db, 'users', user.id), {
+                fatherId: null,
+              });
+
+              // Remove current user from father's children
+              await updateDoc(doc(db, 'users', father.id), {
+                childrenIds: arrayRemove(user.id),
+              });
+
+              setFather(null);
+              await refreshUser();
+              Alert.alert('Success', 'Father relationship removed.');
+            } catch (error) {
+              console.error('Error removing father:', error);
+              Alert.alert('Error', 'Failed to remove relationship.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRemoveMother = async () => {
+    if (!user || !mother) return;
+
+    Alert.alert(
+      'Remove Mother',
+      'Are you sure you want to remove this relationship?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remove motherId from current user
+              await updateDoc(doc(db, 'users', user.id), {
+                motherId: null,
+              });
+
+              // Remove current user from mother's children
+              await updateDoc(doc(db, 'users', mother.id), {
+                childrenIds: arrayRemove(user.id),
+              });
+
+              setMother(null);
+              await refreshUser();
+              Alert.alert('Success', 'Mother relationship removed.');
+            } catch (error) {
+              console.error('Error removing mother:', error);
+              Alert.alert('Error', 'Failed to remove relationship.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRemoveSpouse = async () => {
+    if (!user || !spouse) return;
+
+    Alert.alert(
+      'Remove Spouse',
+      'Are you sure you want to remove this relationship?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remove spouseId from current user
+              await updateDoc(doc(db, 'users', user.id), {
+                spouseId: null,
+              });
+
+              // Remove spouseId from spouse (reciprocal)
+              await updateDoc(doc(db, 'users', spouse.id), {
+                spouseId: null,
+              });
+
+              setSpouse(null);
+              await refreshUser();
+              Alert.alert('Success', 'Spouse relationship removed.');
+            } catch (error) {
+              console.error('Error removing spouse:', error);
+              Alert.alert('Error', 'Failed to remove relationship.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handlePickImage = async () => {
     try {
@@ -640,6 +876,138 @@ export const ProfileScreen = () => {
               <Text style={styles.emptyText}>No personal information added yet</Text>
             )}
 
+            {/* Family Relationships */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Family</Text>
+              <TouchableOpacity onPress={() => loadFamilyMembers()}>
+                <Ionicons name="refresh-outline" size={20} color={colors.primary.main} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Parents */}
+            <View style={styles.familySubsection}>
+              <Text style={styles.familySubtitle}>Parents</Text>
+              
+              {/* Father */}
+              <View style={styles.familyMemberContainer}>
+                <Text style={styles.familyLabel}>Father</Text>
+                {father ? (
+                  <View style={styles.familyMemberCard}>
+                    <Image
+                      source={{ uri: father.photoURL || 'https://via.placeholder.com/40' }}
+                      style={styles.familyAvatar}
+                    />
+                    <View style={styles.familyMemberInfo}>
+                      <Text style={styles.familyMemberName}>{father.displayName}</Text>
+                      {father.profession && (
+                        <Text style={styles.familyMemberDetail}>
+                          {father.profession.replace(/_/g, ' ')}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity onPress={handleRemoveFather}>
+                      <Ionicons name="close-circle" size={24} color={colors.error.main} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.addFamilyButton}
+                    onPress={() => setShowFatherSearch(true)}
+                  >
+                    <Ionicons name="add-circle-outline" size={24} color={colors.primary.main} />
+                    <Text style={styles.addFamilyText}>Link Father's Account</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Mother */}
+              <View style={styles.familyMemberContainer}>
+                <Text style={styles.familyLabel}>Mother</Text>
+                {mother ? (
+                  <View style={styles.familyMemberCard}>
+                    <Image
+                      source={{ uri: mother.photoURL || 'https://via.placeholder.com/40' }}
+                      style={styles.familyAvatar}
+                    />
+                    <View style={styles.familyMemberInfo}>
+                      <Text style={styles.familyMemberName}>{mother.displayName}</Text>
+                      {mother.profession && (
+                        <Text style={styles.familyMemberDetail}>
+                          {mother.profession.replace(/_/g, ' ')}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity onPress={handleRemoveMother}>
+                      <Ionicons name="close-circle" size={24} color={colors.error.main} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.addFamilyButton}
+                    onPress={() => setShowMotherSearch(true)}
+                  >
+                    <Ionicons name="add-circle-outline" size={24} color={colors.primary.main} />
+                    <Text style={styles.addFamilyText}>Link Mother's Account</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Spouse */}
+            <View style={styles.familySubsection}>
+              <Text style={styles.familySubtitle}>Spouse</Text>
+              {spouse ? (
+                <View style={styles.familyMemberCard}>
+                  <Image
+                    source={{ uri: spouse.photoURL || 'https://via.placeholder.com/40' }}
+                    style={styles.familyAvatar}
+                  />
+                  <View style={styles.familyMemberInfo}>
+                    <Text style={styles.familyMemberName}>{spouse.displayName}</Text>
+                    {spouse.profession && (
+                      <Text style={styles.familyMemberDetail}>
+                        {spouse.profession.replace(/_/g, ' ')}
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity onPress={handleRemoveSpouse}>
+                    <Ionicons name="close-circle" size={24} color={colors.error.main} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addFamilyButton}
+                  onPress={() => setShowSpouseSearch(true)}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color={colors.primary.main} />
+                  <Text style={styles.addFamilyText}>Link Spouse's Account</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Children */}
+            {children.length > 0 && (
+              <View style={styles.familySubsection}>
+                <Text style={styles.familySubtitle}>Children ({children.length})</Text>
+                {children.map((child) => (
+                  <View key={child.id} style={styles.familyMemberCard}>
+                    <Image
+                      source={{ uri: child.photoURL || 'https://via.placeholder.com/40' }}
+                      style={styles.familyAvatar}
+                    />
+                    <View style={styles.familyMemberInfo}>
+                      <Text style={styles.familyMemberName}>{child.displayName}</Text>
+                      {child.dateOfBirth && (
+                        <Text style={styles.familyMemberDetail}>
+                          Born: {new Date(child.dateOfBirth).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
             <View style={styles.infoSection}>
               <Text style={styles.label}>Member Since</Text>
               <Text style={styles.value}>
@@ -751,6 +1119,34 @@ export const ProfileScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Family Member Search Modals */}
+      <FamilyMemberSearch
+        visible={showFatherSearch}
+        onClose={() => setShowFatherSearch(false)}
+        onSelectMember={handleLinkFather}
+        title="Link Father's Account"
+        currentUserId={user?.id || ''}
+        villageId={user?.villageId}
+      />
+
+      <FamilyMemberSearch
+        visible={showMotherSearch}
+        onClose={() => setShowMotherSearch(false)}
+        onSelectMember={handleLinkMother}
+        title="Link Mother's Account"
+        currentUserId={user?.id || ''}
+        villageId={user?.villageId}
+      />
+
+      <FamilyMemberSearch
+        visible={showSpouseSearch}
+        onClose={() => setShowSpouseSearch(false)}
+        onSelectMember={handleLinkSpouse}
+        title="Link Spouse's Account"
+        currentUserId={user?.id || ''}
+        villageId={user?.villageId}
+      />
     </ScrollView>
   );
 };
@@ -1042,5 +1438,66 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.secondary,
     marginTop: spacing.xs,
     fontStyle: 'italic',
+  },
+  familySubsection: {
+    marginBottom: spacing.lg,
+  },
+  familySubtitle: {
+    ...typography.body1,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  familyMemberContainer: {
+    marginBottom: spacing.md,
+  },
+  familyLabel: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+  },
+  familyMemberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.paper,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.divider,
+  },
+  familyAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: spacing.md,
+  },
+  familyMemberInfo: {
+    flex: 1,
+  },
+  familyMemberName: {
+    ...typography.body1,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  familyMemberDetail: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  addFamilyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.paper,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    borderStyle: 'dashed',
+  },
+  addFamilyText: {
+    ...typography.body2,
+    color: colors.primary.main,
+    marginLeft: spacing.sm,
   },
 });

@@ -9,14 +9,16 @@ import {
   ActivityIndicator,
   FlatList,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { getThemedColors } from '../styles/theme';
-import { Shop, Product } from '../types';
-import { getShop, getShopProducts, getShopReviews } from '../services/shopService';
+import { Shop, Product, ShopReview } from '../types';
+import { getShop, getShopProducts, getShopReviews, markReviewHelpful, unmarkReviewHelpful } from '../services/shopService';
 import { useAuth } from '../hooks/useAuth';
+import moment from 'moment';
 
 export default function ShopDetailScreen() {
   const navigation = useNavigation();
@@ -29,26 +31,85 @@ export default function ShopDetailScreen() {
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [reviews, setReviews] = useState<ShopReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'products' | 'about' | 'reviews'>('products');
+  const [productSearch, setProductSearch] = useState('');
+  const [priceFilter, setPriceFilter] = useState<'all' | 'low' | 'mid' | 'high'>('all');
+  const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all');
 
   useEffect(() => {
     loadShopData();
   }, [shopId]);
 
+  useEffect(() => {
+    filterProducts();
+  }, [products, productSearch, priceFilter, stockFilter]);
+
+  const filterProducts = () => {
+    let filtered = [...products];
+
+    // Search filter
+    if (productSearch.trim()) {
+      const query = productSearch.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query)
+      );
+    }
+
+    // Price filter
+    if (priceFilter !== 'all') {
+      filtered = filtered.filter(p => {
+        if (priceFilter === 'low') return p.price < 100;
+        if (priceFilter === 'mid') return p.price >= 100 && p.price <= 500;
+        if (priceFilter === 'high') return p.price > 500;
+        return true;
+      });
+    }
+
+    // Stock filter
+    if (stockFilter === 'in-stock') {
+      filtered = filtered.filter(p => p.inStock);
+    } else if (stockFilter === 'out-of-stock') {
+      filtered = filtered.filter(p => !p.inStock);
+    }
+
+    setFilteredProducts(filtered);
+  };
+
   const loadShopData = async () => {
     try {
-      const [shopData, productsData] = await Promise.all([
+      const [shopData, productsData, reviewsData] = await Promise.all([
         getShop(shopId),
         getShopProducts(shopId),
+        getShopReviews(shopId),
       ]);
       setShop(shopData);
       setProducts(productsData);
+      setReviews(reviewsData);
     } catch (error) {
       console.error('Error loading shop:', error);
       Alert.alert('Error', 'Failed to load shop details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMarkHelpful = async (reviewId: string) => {
+    if (!user) return;
+    try {
+      const review = reviews.find(r => r.id === reviewId);
+      if (review?.helpful?.includes(user.id)) {
+        await unmarkReviewHelpful(reviewId, user.id);
+      } else {
+        await markReviewHelpful(reviewId, user.id);
+      }
+      await loadShopData();
+    } catch (error) {
+      console.error('Error marking review helpful:', error);
     }
   };
 
@@ -217,14 +278,68 @@ export default function ShopDetailScreen() {
         {/* Tab Content */}
         {activeTab === 'products' && (
           <View style={styles.tabContent}>
-            {products.length === 0 ? (
+            {/* Product Search and Filters */}
+            <View style={styles.searchContainer}>
+              <View style={styles.searchBar}>
+                <Ionicons name="search" size={20} color={colors.text.secondary} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search products..."
+                  placeholderTextColor={colors.text.secondary}
+                  value={productSearch}
+                  onChangeText={setProductSearch}
+                />
+                {productSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setProductSearch('')}>
+                    <Ionicons name="close-circle" size={20} color={colors.text.secondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersRow}>
+                <TouchableOpacity
+                  style={[styles.filterChip, priceFilter === 'all' && styles.filterChipActive]}
+                  onPress={() => setPriceFilter('all')}
+                >
+                  <Text style={[styles.filterText, priceFilter === 'all' && styles.filterTextActive]}>All Prices</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.filterChip, priceFilter === 'low' && styles.filterChipActive]}
+                  onPress={() => setPriceFilter('low')}
+                >
+                  <Text style={[styles.filterText, priceFilter === 'low' && styles.filterTextActive]}>Under ₹100</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.filterChip, priceFilter === 'mid' && styles.filterChipActive]}
+                  onPress={() => setPriceFilter('mid')}
+                >
+                  <Text style={[styles.filterText, priceFilter === 'mid' && styles.filterTextActive]}>₹100-500</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.filterChip, priceFilter === 'high' && styles.filterChipActive]}
+                  onPress={() => setPriceFilter('high')}
+                >
+                  <Text style={[styles.filterText, priceFilter === 'high' && styles.filterTextActive]}>Above ₹500</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.filterChip, stockFilter === 'in-stock' && styles.filterChipActive]}
+                  onPress={() => setStockFilter(stockFilter === 'in-stock' ? 'all' : 'in-stock')}
+                >
+                  <Text style={[styles.filterText, stockFilter === 'in-stock' && styles.filterTextActive]}>In Stock</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
+            {filteredProducts.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="cube-outline" size={48} color={colors.text.disabled} />
-                <Text style={styles.emptyText}>No products available yet</Text>
+                <Text style={styles.emptyText}>
+                  {products.length === 0 ? 'No products available yet' : 'No products match your filters'}
+                </Text>
               </View>
             ) : (
               <FlatList
-                data={products}
+                data={filteredProducts}
                 renderItem={renderProduct}
                 keyExtractor={(item) => item.id}
                 numColumns={2}
@@ -283,7 +398,118 @@ export default function ShopDetailScreen() {
 
         {activeTab === 'reviews' && (
           <View style={styles.tabContent}>
-            <Text style={styles.emptyText}>Reviews feature coming soon</Text>
+            {reviews.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="star-outline" size={48} color={colors.text.disabled} />
+                <Text style={styles.emptyText}>No reviews yet</Text>
+                <Text style={styles.emptySubtext}>Be the first to review this shop!</Text>
+              </View>
+            ) : (
+              <>
+                {/* Review Summary */}
+                <View style={styles.reviewSummary}>
+                  <View style={styles.ratingLarge}>
+                    <Text style={styles.ratingNumber}>{shop.rating.toFixed(1)}</Text>
+                    <View style={styles.starsRow}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Ionicons
+                          key={star}
+                          name={star <= Math.round(shop.rating) ? 'star' : 'star-outline'}
+                          size={16}
+                          color="#FFB800"
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.reviewCount}>{shop.reviewCount} reviews</Text>
+                  </View>
+                  
+                  {/* Rating Breakdown */}
+                  <View style={styles.ratingBreakdown}>
+                    {[5, 4, 3, 2, 1].map((rating) => {
+                      const count = reviews.filter(r => r.rating === rating).length;
+                      const percentage = (count / reviews.length) * 100;
+                      return (
+                        <View key={rating} style={styles.ratingRow}>
+                          <Text style={styles.ratingLabel}>{rating}</Text>
+                          <Ionicons name="star" size={12} color="#FFB800" />
+                          <View style={styles.ratingBar}>
+                            <View style={[styles.ratingBarFill, { width: `${percentage}%` }]} />
+                          </View>
+                          <Text style={styles.ratingPercent}>{count}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* Reviews List */}
+                {reviews.map((review) => (
+                  <View key={review.id} style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
+                      <View style={styles.reviewerInfo}>
+                        <Image
+                          source={{ uri: review.userAvatar || 'https://via.placeholder.com/40' }}
+                          style={styles.reviewerAvatar}
+                        />
+                        <View>
+                          <Text style={styles.reviewerName}>{review.userName}</Text>
+                          <View style={styles.reviewMeta}>
+                            <View style={styles.starsSmall}>
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Ionicons
+                                  key={star}
+                                  name={star <= review.rating ? 'star' : 'star-outline'}
+                                  size={12}
+                                  color="#FFB800"
+                                />
+                              ))}
+                            </View>
+                            <Text style={styles.reviewDate}>
+                              {review.createdAt?.toDate?.().toLocaleDateString() || 'Recently'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    {review.review && (
+                      <Text style={styles.reviewComment}>{review.review}</Text>
+                    )}
+
+                    {review.photos && review.photos.length > 0 && (
+                      <View style={styles.reviewImages}>
+                        {review.photos.map((img: string, idx: number) => (
+                          <Image key={idx} source={{ uri: img }} style={styles.reviewImage} />
+                        ))}
+                      </View>
+                    )}
+
+                    {review.response && (
+                      <View style={styles.shopResponse}>
+                        <Text style={styles.responseLabel}>Shop Owner Response:</Text>
+                        <Text style={styles.responseText}>{review.response}</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.reviewFooter}>
+                      <TouchableOpacity
+                        style={styles.helpfulButton}
+                        onPress={() => handleMarkHelpful(review.id)}
+                      >
+                        <Ionicons
+                          name={review.helpful?.includes(user?.id || '') ? 'thumbs-up' : 'thumbs-up-outline'}
+                          size={16}
+                          color={review.helpful?.includes(user?.id || '') ? colors.primary.main : colors.text.secondary}
+                        />
+                        <Text style={styles.helpfulText}>
+                          Helpful ({review.helpful?.length || 0})
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
           </View>
         )}
       </ScrollView>
@@ -555,10 +781,169 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 12,
   },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.text.disabled,
+    marginTop: 4,
+  },
   errorText: {
     fontSize: 18,
     color: colors.text.secondary,
     marginTop: 12,
+  },
+  reviewSummary: {
+    backgroundColor: colors.background.paper,
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  ratingLarge: {
+    alignItems: 'center',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  ratingNumber: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginVertical: 8,
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: colors.text.secondary,
+  },
+  ratingBreakdown: {
+    marginTop: 16,
+    gap: 8,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ratingLabel: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    width: 12,
+  },
+  ratingBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: colors.background.default,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  ratingBarFill: {
+    height: '100%',
+    backgroundColor: '#FFB800',
+  },
+  ratingPercent: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    width: 30,
+    textAlign: 'right',
+  },
+  reviewCard: {
+    backgroundColor: colors.background.paper,
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  reviewerInfo: {
+    flexDirection: 'row',
+    gap: 12,
+    flex: 1,
+  },
+  reviewerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  reviewerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: 4,
+  },
+  reviewMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  starsSmall: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  verifiedPurchase: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.success.light,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  reviewComment: {
+    fontSize: 14,
+    color: colors.text.primary,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  reviewImages: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  reviewImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  shopResponse: {
+    backgroundColor: colors.background.default,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  responseLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary.main,
+    marginBottom: 4,
+  },
+  responseText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  reviewFooter: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingTop: 12,
+  },
+  helpfulButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  helpfulText: {
+    fontSize: 13,
+    color: colors.text.secondary,
   },
   sectionTitle: {
     fontSize: 18,
@@ -601,6 +986,49 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     color: colors.text.secondary,
     marginBottom: 4,
+  },
+  searchContainer: {
+    marginBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.default,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: colors.text.primary,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.background.default,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    marginRight: 8,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary.main,
+    borderColor: colors.primary.main,
+  },
+  filterText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  filterTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   manageButton: {
     position: 'absolute',

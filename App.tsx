@@ -104,6 +104,10 @@ import ProductDetailScreen from './src/screens/ProductDetailScreen';
 import ManageProductsScreen from './src/screens/ManageProductsScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
 import OrderDetailScreen from './src/screens/OrderDetailScreen';
+import CreateEventScreen from './src/screens/CreateEventScreen';
+import CreateFundraiserScreen from './src/screens/CreateFundraiserScreen';
+import AddPlaceScreen from './src/screens/AddPlaceScreen';
+import FamousPlacesScreen from './src/screens/FamousPlacesScreen';
 
 // Placeholder for unimplemented admin screens
 function PlaceholderAdminScreen({ title }: { title: string }) {
@@ -300,11 +304,29 @@ function AppStack() {
         }}
       />
       <Stack.Screen 
+        name="CreateEvent" 
+        component={CreateEventScreen}
+        options={{ 
+          title: 'Create Event',
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen 
         name="Fundraisers" 
         component={FundraisersScreen}
         options={{ 
           title: 'Fundraisers',
           headerShown: true,
+        }}
+      />
+      <Stack.Screen 
+        name="CreateFundraiser" 
+        component={CreateFundraiserScreen}
+        options={{ 
+          title: 'Create Fundraiser',
+          headerShown: false,
+          presentation: 'modal',
         }}
       />
       <Stack.Screen 
@@ -516,6 +538,22 @@ function AppStack() {
         component={OrderDetailScreen}
         options={{ 
           title: 'Order Details',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="FamousPlaces" 
+        component={FamousPlacesScreen}
+        options={{ 
+          title: 'Famous Places',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen 
+        name="AddPlace" 
+        component={AddPlaceScreen}
+        options={{ 
+          title: 'Add Place',
           headerShown: false,
         }}
       />

@@ -111,7 +111,7 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.default }}>
-      <ScrollView showsVerticalScrollIndicator={true} bounces={true}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={true} bounces={true}>
         {/* Product Images */}
         <View style={styles.imagesContainer}>
           <Image

@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { PermissionService } from '../services/permissionService';
+import { AdminService } from '../services/adminService';
 import { Report } from '../types';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 
@@ -55,10 +56,8 @@ export const ContentModerationScreen: React.FC<ContentModerationScreenProps> = (
   const loadReports = async () => {
     try {
       setLoading(true);
-      // TODO: Implement getReports in adminService
-      // const reportsData = await getReports();
-      // setReports(reportsData);
-      setReports([]); // Temporary placeholder
+      const reportsData = await AdminService.getReports(filter === 'ALL' ? undefined : filter);
+      setReports(reportsData);
     } catch (error) {
       console.error('Error loading reports:', error);
       Alert.alert('Error', 'Failed to load reports');
@@ -75,8 +74,8 @@ export const ContentModerationScreen: React.FC<ContentModerationScreenProps> = (
 
   const handleUpdateStatus = async (reportId: string, status: Report['status'], action?: string) => {
     try {
-      // TODO: Implement updateReport in adminService
-      // await updateReport(reportId, status, action);
+      if (!user) return;
+      await AdminService.updateReport(reportId, status, action || 'No action taken', user.id);
       await loadReports();
       setModalVisible(false);
       Alert.alert('Success', 'Report updated successfully');

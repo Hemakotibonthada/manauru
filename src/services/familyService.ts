@@ -605,8 +605,52 @@ export class FamilyService {
     member2Id: string
   ): Promise<FamilyMember[]> {
     try {
-      // TODO: Implement path-finding algorithm to find connection
-      // This would use BFS to find shortest path between two members
+      if (member1Id === member2Id) {
+        const member = await this.getFamilyMember(member1Id);
+        return member ? [member] : [];
+      }
+
+      const members = await this.getTreeMembers(treeId);
+      const relations = await this.getTreeRelations(treeId);
+
+      // Build adjacency list for BFS
+      const adjacencyMap = new Map<string, string[]>();
+      members.forEach((member) => adjacencyMap.set(member.id!, []));
+
+      relations.forEach((relation) => {
+        const neighbors = adjacencyMap.get(relation.fromMemberId) || [];
+        neighbors.push(relation.toMemberId);
+        adjacencyMap.set(relation.fromMemberId, neighbors);
+
+        const neighbors2 = adjacencyMap.get(relation.toMemberId) || [];
+        neighbors2.push(relation.fromMemberId);
+        adjacencyMap.set(relation.toMemberId, neighbors2);
+      });
+
+      // BFS to find shortest path
+      const queue: { id: string; path: string[] }[] = [{ id: member1Id, path: [member1Id] }];
+      const visited = new Set<string>([member1Id]);
+
+      while (queue.length > 0) {
+        const { id: currentId, path } = queue.shift()!;
+
+        if (currentId === member2Id) {
+          // Found the connection - map IDs to FamilyMember objects
+          return path
+            .map((id) => members.find((m) => m.id === id))
+            .filter((m): m is FamilyMember => m !== undefined);
+        }
+
+        const neighbors = adjacencyMap.get(currentId) || [];
+        for (const neighborId of neighbors) {
+          if (!visited.has(neighborId)) {
+            visited.add(neighborId);
+            queue.push({ id: neighborId, path: [...path, neighborId] });
+          }
+        }
+      }
+
+      // No connection found
       return [];
     } catch (error) {
       console.error('Error finding connection:', error);

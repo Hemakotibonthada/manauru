@@ -302,7 +302,7 @@ export default function GroupDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {/* Cover Image */}
         {group.coverImage ? (
           <Image source={{ uri: group.coverImage }} style={styles.coverImage} />

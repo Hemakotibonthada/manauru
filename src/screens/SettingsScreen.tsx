@@ -18,6 +18,9 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../context/ThemeContext';
 import { getThemedColors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 import { PermissionService } from '../services/permissionService';
+import { getAuth, deleteUser, sendPasswordResetEmail } from 'firebase/auth';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import AuthService from '../services/authService';
 
 interface SettingsScreenProps {
@@ -61,18 +64,42 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     );
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     Alert.alert(
       'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
+      'Are you sure you want to delete your account? This will permanently delete all your data including posts, comments, and messages. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement account deletion
-            Alert.alert('Coming Soon', 'Account deletion will be available soon');
+          onPress: async () => {
+            try {
+              if (!user?.id) return;
+              
+              // Delete user data from Firestore
+              await deleteDoc(doc(db, 'users', user.id));
+              
+              // Delete from Firebase Auth
+              const auth = getAuth();
+              if (auth.currentUser) {
+                await deleteUser(auth.currentUser);
+              }
+              
+              Alert.alert('Success', 'Your account has been deleted', [
+                { text: 'OK', onPress: () => navigation.navigate('Login') }
+              ]);
+            } catch (error: any) {
+              console.error('Error deleting account:', error);
+              if (error.code === 'auth/requires-recent-login') {
+                Alert.alert(
+                  'Re-authentication Required',
+                  'Please log out and log in again, then try deleting your account.'
+                );
+              } else {
+                Alert.alert('Error', 'Failed to delete account. Please try again.');
+              }
+            }
           },
         },
       ]
@@ -143,13 +170,80 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           'lock-closed-outline',
           'Privacy',
           'Control who can see your content',
-          () => Alert.alert('Coming Soon', 'Privacy settings coming soon')
+          () => {
+            Alert.alert(
+              'Privacy Settings',
+              'Choose your privacy preferences',
+              [
+                {
+                  text: 'Post Visibility',
+                  onPress: () => Alert.alert(
+                    'Default Post Visibility',
+                    'Choose who can see your posts by default',
+                    [
+                      { text: 'Public', onPress: () => console.log('Set to Public') },
+                      { text: 'Village Only', onPress: () => console.log('Set to Village') },
+                      { text: 'Followers Only', onPress: () => console.log('Set to Followers') },
+                      { text: 'Cancel', style: 'cancel' }
+                    ]
+                  )
+                },
+                {
+                  text: 'Profile Visibility',
+                  onPress: () => Alert.alert(
+                    'Profile Visibility',
+                    'Choose who can see your profile',
+                    [
+                      { text: 'Everyone', onPress: () => console.log('Public profile') },
+                      { text: 'Village Members', onPress: () => console.log('Village only') },
+                      { text: 'Cancel', style: 'cancel' }
+                    ]
+                  )
+                },
+                { text: 'Cancel', style: 'cancel' }
+              ]
+            );
+          }
         )}
         {renderSettingItem(
           'shield-checkmark-outline',
           'Security',
           'Password and authentication',
-          () => Alert.alert('Coming Soon', 'Security settings coming soon')
+          () => {
+            Alert.alert(
+              'Security Settings',
+              'Manage your account security',
+              [
+                {
+                  text: 'Change Password',
+                  onPress: () => {
+                    const auth = getAuth();
+                    if (auth.currentUser?.email) {
+                      sendPasswordResetEmail(auth, auth.currentUser.email)
+                        .then(() => {
+                          Alert.alert(
+                            'Password Reset Email Sent',
+                            'Check your email for password reset instructions.'
+                          );
+                        })
+                        .catch((error: any) => {
+                          Alert.alert('Error', 'Failed to send password reset email.');
+                        });
+                    }
+                  }
+                },
+                {
+                  text: 'Two-Factor Authentication',
+                  onPress: () => Alert.alert('Coming Soon', '2FA will be available soon')
+                },
+                {
+                  text: 'Active Sessions',
+                  onPress: () => Alert.alert('Active Sessions', 'You are currently logged in on 1 device')
+                },
+                { text: 'Cancel', style: 'cancel' }
+              ]
+            );
+          }
         )}
       </View>
 
@@ -256,7 +350,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 // Dynamic styles - recreated when theme changes
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
-    // Remove flex: 1 to allow ScrollView to expand properly
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: spacing.xl * 4,

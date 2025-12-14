@@ -37,6 +37,11 @@ export interface User {
   maritalStatus?: MaritalStatus;
   bloodGroup?: BloodGroup;
   emergencyContact?: EmergencyContact;
+  // Family Relationships
+  fatherId?: string;
+  motherId?: string;
+  spouseId?: string;
+  childrenIds?: string[];
 }
 
 export enum UserRole {

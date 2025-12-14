@@ -21,7 +21,8 @@ import { colors, typography, spacing, borderRadius } from '../styles/theme';
 import { useAuth } from '../hooks/useAuth';
 import { AdminService } from '../services/adminService';
 import { PermissionService } from '../services/permissionService';
-import { AdminStats } from '../types';
+import { AdminStats, AuditLog } from '../types';
+import moment from 'moment';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -31,6 +32,7 @@ export default function AdminDashboardScreen() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<AuditLog[]>([]);
 
   useEffect(() => {
     if (!user || !PermissionService.canAccessAdmin(user.role)) {
@@ -40,12 +42,15 @@ export default function AdminDashboardScreen() {
     }
     loadStats();
   }, []);
-
   const loadStats = async () => {
     try {
       setLoading(true);
       const data = await AdminService.getAdminStats();
       setStats(data);
+      
+      // Load recent activity
+      const logs = await AdminService.getAuditLogs(10);
+      setRecentActivity(logs);
     } catch (error) {
       console.error('Error loading stats:', error);
       Alert.alert('Error', 'Failed to load admin statistics');
@@ -227,13 +232,56 @@ export default function AdminDashboardScreen() {
             <Text style={styles.viewAllText}>View All</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.activityCard}>
-          <Text style={styles.emptyText}>Activity tracking coming soon</Text>
-        </View>
+        {recentActivity.length === 0 ? (
+          <View style={styles.activityCard}>
+            <Text style={styles.emptyText}>No recent activity</Text>
+          </View>
+        ) : (
+          recentActivity.map((log) => (
+            <View key={log.id} style={styles.activityItem}>
+              <View style={styles.activityIcon}>
+                <Ionicons 
+                  name={getActivityIcon(log.action)} 
+                  size={20} 
+                  color={colors.primary.main} 
+                />
+              </View>
+              <View style={styles.activityContent}>
+                <Text style={styles.activityUser}>{log.userName}</Text>
+                <Text style={styles.activityAction}>{formatAction(log.action, log.targetType)}</Text>
+                <Text style={styles.activityTime}>
+                  {moment(log.timestamp.toDate()).fromNow()}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
       </View>
     </ScrollView>
   );
 }
+
+const getActivityIcon = (action: string): any => {
+  const iconMap: Record<string, any> = {
+    'CREATE': 'add-circle',
+    'UPDATE': 'create',
+    'DELETE': 'trash',
+    'DELETE_CONTENT': 'trash-bin',
+    'ASSIGN_ROLE': 'shield-checkmark',
+    'REMOVE_ROLE': 'shield-outline',
+    'BAN_USER': 'ban',
+    'UNBAN_USER': 'checkmark-circle',
+    'UPDATE_SETTINGS': 'settings',
+    'APPROVE': 'checkmark-done',
+    'REJECT': 'close-circle',
+  };
+  return iconMap[action] || 'information-circle';
+};
+
+const formatAction = (action: string, targetType: string): string => {
+  const actionText = action.toLowerCase().replace(/_/g, ' ');
+  return `${actionText} ${targetType.toLowerCase()}`;
+};
 
 const StatCard = ({
   title,
@@ -384,6 +432,42 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.paper,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.paper,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  activityIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary.light,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityUser: {
+    ...typography.body2,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  activityAction: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  activityTime: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    fontSize: 10,
+    marginTop: 2,
   },
   emptyText: {
     ...typography.body2,

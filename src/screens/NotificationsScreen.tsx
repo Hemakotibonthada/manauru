@@ -12,12 +12,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { Notification, NotificationType } from '../types';
 import { colors, spacing, borderRadius, typography } from '../styles/theme';
 import moment from 'moment';
+import { NotificationService } from '../services/notificationService';
 
 interface NotificationsScreenProps {
   navigation: any;
@@ -36,40 +38,15 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ naviga
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      // TODO: Implement notification service
-      // Mock data for now
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          userId: user?.id || '',
-          type: NotificationType.POST_LIKE,
-          title: 'New Like',
-          body: 'Someone liked your post',
-          read: false,
-          createdAt: { toDate: () => new Date() } as any,
-        },
-        {
-          id: '2',
-          userId: user?.id || '',
-          type: NotificationType.POST_COMMENT,
-          title: 'New Comment',
-          body: 'Someone commented on your post',
-          read: false,
-          createdAt: { toDate: () => new Date(Date.now() - 3600000) } as any,
-        },
-        {
-          id: '3',
-          userId: user?.id || '',
-          type: NotificationType.FOLLOW,
-          title: 'New Follower',
-          body: 'Someone started following you',
-          read: true,
-          createdAt: { toDate: () => new Date(Date.now() - 86400000) } as any,
-        },
-      ];
-      setNotifications(mockNotifications);
+      if (user?.id) {
+        const data = await NotificationService.getUserNotifications(user.id);
+        setNotifications(data);
+      } else {
+        setNotifications([]);
+      }
     } catch (error) {
       console.error('Error loading notifications:', error);
+      Alert.alert('Error', 'Failed to load notifications');
     } finally {
       setLoading(false);
     }

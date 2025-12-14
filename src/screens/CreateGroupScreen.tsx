@@ -171,7 +171,7 @@ export default function CreateGroupScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {/* Cover Image */}
         <TouchableOpacity style={styles.coverImageContainer} onPress={pickCoverImage}>
           {coverImage ? (

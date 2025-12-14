@@ -13,11 +13,13 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { Fundraiser, FundraiserCategory, FundraiserStatus } from '../types';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
+import { FundraiserService } from '../services/fundraiserService';
 import moment from 'moment';
 
 interface FundraisersScreenProps {
@@ -38,51 +40,28 @@ export const FundraisersScreen: React.FC<FundraisersScreenProps> = ({ navigation
   const loadFundraisers = async () => {
     try {
       setLoading(true);
-      // TODO: Implement fundraiser service
-      // Mock data for now
-      const mockFundraisers: Fundraiser[]= [
-        {
-          id: '1',
-          userId: user?.id || '',
-          userName: user?.displayName || '',
-          title: 'School Building Renovation',
-          description: 'Help us renovate the village school building',
-          goalAmount: 500000,
-          raisedAmount: 325000,
-          currency: 'INR',
-          category: FundraiserCategory.EDUCATION,
-          media: [],
-          contributors: [],
-          status: FundraiserStatus.ACTIVE,
-          startDate: { toDate: () => new Date(Date.now() - 86400000 * 30) } as any,
-          endDate: { toDate: () => new Date(Date.now() + 86400000 * 30) } as any,
-          createdAt: { toDate: () => new Date() } as any,
-          updatedAt: { toDate: () => new Date() } as any,
-          verified: true,
-        },
-        {
-          id: '2',
-          userId: user?.id || '',
-          userName: user?.displayName || '',
-          title: 'Water Tank Installation',
-          description: 'Installing a new water tank for the village',
-          goalAmount: 200000,
-          raisedAmount: 180000,
-          currency: 'INR',
-          category: FundraiserCategory.INFRASTRUCTURE,
-          media: [],
-          contributors: [],
-          status: FundraiserStatus.ACTIVE,
-          startDate: { toDate: () => new Date(Date.now() - 86400000 * 15) } as any,
-          endDate: { toDate: () => new Date(Date.now() + 86400000 * 15) } as any,
-          createdAt: { toDate: () => new Date() } as any,
-          updatedAt: { toDate: () => new Date() } as any,
-          verified: true,
-        },
-      ];
-      setFundraisers(mockFundraisers);
+      let data: Fundraiser[] = [];
+      
+      if (filter === 'all') {
+        data = user?.villageId 
+          ? await FundraiserService.getVillageFundraisers(user.villageId) 
+          : await FundraiserService.getActiveFundraisers(100);
+      } else if (filter === 'active') {
+        data = await FundraiserService.getActiveFundraisers();
+        if (user?.villageId) {
+          data = data.filter(f => f.villageId === user.villageId);
+        }
+      } else if (filter === 'completed') {
+        data = user?.villageId 
+          ? await FundraiserService.getVillageFundraisers(user.villageId)
+          : await FundraiserService.getActiveFundraisers(100);
+        data = data.filter(f => f.status === FundraiserStatus.COMPLETED || f.raisedAmount >= f.goalAmount);
+      }
+      
+      setFundraisers(data);
     } catch (error) {
       console.error('Error loading fundraisers:', error);
+      Alert.alert('Error', 'Failed to load fundraisers');
     } finally {
       setLoading(false);
     }

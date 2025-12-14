@@ -13,10 +13,12 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { Event, EventCategory, EventStatus } from '../types';
+import { EventService } from '../services/eventService';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 import moment from 'moment';
 
@@ -38,47 +40,23 @@ export const EventsScreen: React.FC<EventsScreenProps> = ({ navigation }) => {
   const loadEvents = async () => {
     try {
       setLoading(true);
-      // TODO: Implement event service
-      // Mock data for now
-      const mockEvents: Event[] = [
-        {
-          id: '1',
-          userId: user?.id || '',
-          userName: user?.displayName || '',
-          title: 'Village Festival',
-          description: 'Annual village festival with cultural programs',
-          category: EventCategory.FESTIVAL,
-          startDate: { toDate: () => new Date(Date.now() + 86400000 * 7) } as any,
-          endDate: { toDate: () => new Date(Date.now() + 86400000 * 8) } as any,
-          location: { latitude: 0, longitude: 0, address: 'Village Center' },
-          attendees: [],
-          attendeeCount: 156,
-          organizer: 'Village Committee',
-          status: EventStatus.UPCOMING,
-          createdAt: { toDate: () => new Date() } as any,
-          updatedAt: { toDate: () => new Date() } as any,
-        },
-        {
-          id: '2',
-          userId: user?.id || '',
-          userName: user?.displayName || '',
-          title: 'Health Camp',
-          description: 'Free health checkup camp for all villagers',
-          category: EventCategory.HEALTH,
-          startDate: { toDate: () => new Date(Date.now() + 86400000 * 3) } as any,
-          endDate: { toDate: () => new Date(Date.now() + 86400000 * 3) } as any,
-          location: { latitude: 0, longitude: 0, address: 'Community Hall' },
-          attendees: [],
-          attendeeCount: 45,
-          organizer: 'Health Department',
-          status: EventStatus.UPCOMING,
-          createdAt: { toDate: () => new Date() } as any,
-          updatedAt: { toDate: () => new Date() } as any,
-        },
-      ];
-      setEvents(mockEvents);
+      let data: Event[] = [];
+      
+      if (filter === 'all') {
+        data = user?.villageId ? await EventService.getVillageEvents(user.villageId) : await EventService.getAllEvents();
+      } else if (filter === 'upcoming') {
+        data = await EventService.getUpcomingEvents();
+        if (user?.villageId) {
+          data = data.filter(e => e.villageId === user.villageId);
+        }
+      } else if (filter === 'attending' && user?.id) {
+        data = await EventService.getUserEvents(user.id);
+      }
+      
+      setEvents(data);
     } catch (error) {
       console.error('Error loading events:', error);
+      Alert.alert('Error', 'Failed to load events');
     } finally {
       setLoading(false);
     }
