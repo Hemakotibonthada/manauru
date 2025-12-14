@@ -275,8 +275,10 @@ export interface Chat {
   type: ChatType;
   participants: string[];
   participantDetails: ParticipantDetail[];
-  lastMessage?: Message;
+  lastMessage?: string;
   lastMessageTime?: Timestamp;
+  lastMessageType?: MessageType;
+  typing?: { [userId: string]: Timestamp };
   unreadCount: { [userId: string]: number };
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -305,8 +307,10 @@ export interface Message {
   replyTo?: string;
   readBy: string[];
   deliveredTo: string[];
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  reactions?: { [emoji: string]: string[] }; // emoji -> array of user IDs
+  timestamp: Timestamp;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export enum MessageType {

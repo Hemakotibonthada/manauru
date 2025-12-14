@@ -16,6 +16,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProblemService } from '../services/problemService';
 import { Problem, ProblemCategory, ProblemSeverity, ProblemStatus } from '../types';
@@ -26,6 +27,7 @@ import { useTheme } from '../context/ThemeContext';
 type FilterType = 'all' | ProblemStatus;
 
 export const ProblemsScreen = () => {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
@@ -303,7 +305,11 @@ export const ProblemsScreen = () => {
       />
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity 
+        style={styles.fab}
+        // @ts-ignore - Navigation typing issue
+        onPress={() => navigation.navigate('CreateProblem')}
+      >
         <Ionicons name="add" size={28} color={colors.primary.contrast} />
       </TouchableOpacity>
     </View>

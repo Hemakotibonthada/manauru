@@ -256,10 +256,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 // Dynamic styles - recreated when theme changes
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
-    flex: 1,
+    // Remove flex: 1 to allow ScrollView to expand properly
   },
   scrollContent: {
-    paddingBottom: spacing.xl * 3,
+    paddingBottom: spacing.xl * 4,
+    flexGrow: 1,
   },
   section: {
     marginTop: spacing.md,

@@ -14,7 +14,9 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { FAB } from 'react-native-paper';
 import { ChatService } from '../services/chatService';
 import { Chat, ChatType } from '../types';
 import { useAuth } from '../hooks/useAuth';
@@ -22,14 +24,37 @@ import { colors, spacing, borderRadius, typography } from '../styles/theme';
 
 export const MessagesScreen = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadChats();
-    }
+    if (!user) return;
+
+    // Subscribe to real-time chat updates
+    const unsubscribe = ChatService.subscribeToUserChats(
+      user.id,
+      (updatedChats) => {
+        setChats(updatedChats);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error subscribing to chats:', error);
+        setLoading(false);
+      }
+    );
+
+    // Update online status
+    ChatService.updateOnlineStatus(user.id, true);
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribe();
+      if (user) {
+        ChatService.updateOnlineStatus(user.id, false);
+      }
+    };
   }, [user]);
 
   const loadChats = async () => {
@@ -94,11 +119,17 @@ export const MessagesScreen = () => {
     const chatTitle = getChatTitle(item);
     const chatAvatar = getChatAvatar(item);
     const unreadCount = getUnreadCount(item);
-    const lastMessagePreview = item.lastMessage?.content || 'No messages yet';
+    const lastMessagePreview = item.lastMessage || 'No messages yet';
     const lastMessageTime = item.lastMessageTime;
 
     return (
-      <TouchableOpacity style={styles.chatItem}>
+      <TouchableOpacity 
+        style={styles.chatItem}
+        onPress={() => {
+          // @ts-ignore - Navigation typing issue
+          navigation.navigate('Chat', { chatId: item.id });
+        }}
+      >
         <View style={styles.avatarContainer}>
           {chatAvatar ? (
             <Image source={{ uri: chatAvatar }} style={styles.avatar} />
@@ -177,9 +208,14 @@ export const MessagesScreen = () => {
       />
 
       {/* FAB for new chat */}
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="create" size={24} color={colors.primary.contrast} />
-      </TouchableOpacity>
+      <FAB
+        style={styles.fab}
+        icon="plus"
+        onPress={() => {
+          // @ts-ignore - Navigation typing issue
+          navigation.navigate('NewChat');
+        }}
+      />
     </View>
   );
 };
@@ -302,18 +338,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: 16,
+    bottom: 16,
     backgroundColor: colors.primary.main,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
 });

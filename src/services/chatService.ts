@@ -359,6 +359,215 @@ export class ChatService {
       throw new Error('Failed to delete message');
     }
   }
+
+  /**
+   * Add reaction to message
+   */
+  static async addReaction(
+    chatId: string,
+    messageId: string,
+    userId: string,
+    emoji: string
+  ): Promise<void> {
+    try {
+      const messageRef = doc(db, 'chats', chatId, 'messages', messageId);
+      const messageDoc = await getDoc(messageRef);
+      
+      if (messageDoc.exists()) {
+        const messageData = messageDoc.data();
+        const reactions = messageData.reactions || {};
+        
+        if (!reactions[emoji]) {
+          reactions[emoji] = [];
+        }
+        
+        // Toggle reaction
+        const userIndex = reactions[emoji].indexOf(userId);
+        if (userIndex === -1) {
+          reactions[emoji].push(userId);
+        } else {
+          reactions[emoji].splice(userIndex, 1);
+          if (reactions[emoji].length === 0) {
+            delete reactions[emoji];
+          }
+        }
+        
+        await updateDoc(messageRef, {
+          reactions,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error adding reaction:', error);
+      throw new Error('Failed to add reaction');
+    }
+  }
+
+  /**
+   * Set typing status
+   */
+  static async setTypingStatus(
+    chatId: string,
+    userId: string,
+    isTyping: boolean
+  ): Promise<void> {
+    try {
+      const chatRef = doc(db, 'chats', chatId);
+      const chatDoc = await getDoc(chatRef);
+      
+      if (chatDoc.exists()) {
+        const chatData = chatDoc.data();
+        const typing = chatData.typing || {};
+        
+        if (isTyping) {
+          typing[userId] = Timestamp.now();
+        } else {
+          delete typing[userId];
+        }
+        
+        await updateDoc(chatRef, { typing });
+      }
+    } catch (error) {
+      console.error('❌ Error setting typing status:', error);
+    }
+  }
+
+  /**
+   * Subscribe to typing indicator
+   */
+  static subscribeToTyping(
+    chatId: string,
+    currentUserId: string,
+    callback: (isTyping: boolean) => void
+  ): () => void {
+    try {
+      const chatRef = doc(db, 'chats', chatId);
+      
+      return onSnapshot(chatRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const chatData = snapshot.data();
+          const typing = chatData.typing || {};
+          
+          // Check if any other user is typing
+          const otherUsersTyping = Object.keys(typing).some(
+            (userId) => userId !== currentUserId
+          );
+          
+          callback(otherUsersTyping);
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error subscribing to typing:', error);
+      return () => {};
+    }
+  }
+
+  /**
+   * Update user online status
+   */
+  static async updateOnlineStatus(
+    userId: string,
+    isOnline: boolean
+  ): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        isOnline,
+        lastSeen: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('❌ Error updating online status:', error);
+    }
+  }
+
+  /**
+   * Search messages in chat
+   */
+  static async searchMessages(
+    chatId: string,
+    searchQuery: string
+  ): Promise<Message[]> {
+    try {
+      const q = query(
+        collection(db, 'chats', chatId, 'messages'),
+        orderBy('createdAt', 'desc')
+      );
+
+      const snapshot = await getDocs(q);
+      const allMessages = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Message)
+      );
+
+      // Filter messages containing search query
+      return allMessages.filter((message) =>
+        message.content.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    } catch (error) {
+      console.error('❌ Error searching messages:', error);
+      throw new Error('Failed to search messages');
+    }
+  }
+
+  /**
+   * Send message with media
+   */
+  static async sendMessage(
+    chatId: string,
+    senderId: string,
+    senderName: string,
+    senderAvatar: string | undefined,
+    content: string,
+    type: MessageType = MessageType.TEXT,
+    replyTo?: string
+  ): Promise<string> {
+    try {
+      const messageRef = doc(collection(db, 'chats', chatId, 'messages'));
+      const messageData: Omit<Message, 'id'> = {
+        chatId,
+        senderId,
+        senderName,
+        senderAvatar,
+        type,
+        content,
+        replyTo,
+        readBy: [senderId],
+        deliveredTo: [senderId],
+        timestamp: serverTimestamp() as any,
+      };
+
+      await setDoc(messageRef, messageData);
+
+      // Update chat with last message
+      const chatRef = doc(db, 'chats', chatId);
+      const chatDoc = await getDoc(chatRef);
+      
+      if (chatDoc.exists()) {
+        const chatData = chatDoc.data();
+        const unreadCount = { ...chatData.unreadCount };
+        
+        // Increment unread count for all participants except sender
+        chatData.participants.forEach((participantId: string) => {
+          if (participantId !== senderId) {
+            unreadCount[participantId] = (unreadCount[participantId] || 0) + 1;
+          }
+        });
+
+        await updateDoc(chatRef, {
+          lastMessage: content.substring(0, 100),
+          lastMessageTime: serverTimestamp(),
+          lastMessageType: type,
+          unreadCount,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      console.log('✅ Message sent successfully');
+      return messageRef.id;
+    } catch (error) {
+      console.error('❌ Error sending message:', error);
+      throw new Error('Failed to send message');
+    }
+  }
 }
 
 export default ChatService;

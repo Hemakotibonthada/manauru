@@ -71,7 +71,10 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ExploreScreen } from './src/screens/ExploreScreen';
 import { ProblemsScreen } from './src/screens/ProblemsScreen';
+import { CreateProblemScreen } from './src/screens/CreateProblemScreen';
 import { MessagesScreen } from './src/screens/MessagesScreen';
+import ChatScreen from './src/screens/ChatScreen';
+import NewChatScreen from './src/screens/NewChatScreen';
 import { CreatePostScreen } from './src/screens/CreatePostScreen';
 import { PostDetailScreen } from './src/screens/PostDetailScreen';
 import { VillageDetailScreen } from './src/screens/VillageDetailScreen';
@@ -237,6 +240,30 @@ function AppStack() {
         component={PostDetailScreen}
         options={{ 
           title: 'Post',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen 
+        name="CreateProblem" 
+        component={CreateProblemScreen}
+        options={{ 
+          title: 'Report Problem',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen 
+        name="Chat" 
+        component={ChatScreen}
+        options={{ 
+          title: 'Chat',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen 
+        name="NewChat" 
+        component={NewChatScreen}
+        options={{ 
+          title: 'New Chat',
           headerShown: true,
         }}
       />

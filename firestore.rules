@@ -101,6 +101,41 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
+    // Group Members collection
+    match /groupMembers/{memberId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (isOwner(resource.data.userId) || isAdmin());
+      allow delete: if isSignedIn() && 
+        (isOwner(resource.data.userId) || isAdmin());
+    }
+    
+    // Group Posts collection
+    match /groupPosts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (isOwner(resource.data.userId) || isAdmin());
+      allow delete: if isSignedIn() && 
+        (isOwner(resource.data.userId) || isAdmin());
+    }
+    
+    // Group Invitations collection
+    match /groupInvitations/{invitationId} {
+      allow read: if isSignedIn() && 
+        (isOwner(resource.data.invitedUserId) || 
+         isOwner(resource.data.invitedBy) || 
+         isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (isOwner(resource.data.invitedUserId) || isAdmin());
+      allow delete: if isSignedIn() && 
+        (isOwner(resource.data.invitedUserId) || 
+         isOwner(resource.data.invitedBy) || 
+         isAdmin());
+    }
+    
     // Notifications collection
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && isOwner(resource.data.userId);
@@ -193,6 +228,22 @@ service cloud.firestore {
         (resource.data.createdBy == request.auth.uid || isAdmin());
       allow delete: if isSignedIn() && 
         (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Chats collection
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow delete: if isSignedIn() && request.auth.uid in resource.data.participants;
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow update: if isSignedIn() && (isOwner(resource.data.senderId) || request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants);
+        allow delete: if isSignedIn() && isOwner(resource.data.senderId);
+      }
     }
   }
 }
